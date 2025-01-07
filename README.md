@@ -9,9 +9,6 @@
 - 설치
 - 사용법
 
-## 실행화면
-![HanjaHanja-Brave2024-08-1122-34-42-ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/512d3b1d-024c-45e6-9363-8a8b09acec07)
-
 ## 설치
 
 이 프로젝트를 로컬 환경에서 실행하려면 다음 단계를 따르세요.
