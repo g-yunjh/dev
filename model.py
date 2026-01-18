@@ -1,11 +1,9 @@
 import pandas as pd
 import numpy as np
 import xgboost as xgb
-import lightgbm as lgb
-from catboost import CatBoostRegressor
 from sklearn.model_selection import KFold
 from sklearn.metrics import mean_squared_error
-from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.preprocessing import LabelEncoder
 import os
 import warnings
 
@@ -13,170 +11,111 @@ warnings.filterwarnings("ignore")
 
 class Config:
     data_dir = './data'
-    org_path = './data/Exam_Score_Prediction.csv' 
+    org_path = './data/Exam_Score_Prediction.csv'
     seed = 42
     target = 'exam_score'
     n_splits = 5
 
 cfg = Config()
 
-class TargetEncoder(BaseEstimator, TransformerMixin):
-    def __init__(self, cols_to_encode, aggs=['mean'], cv=5, smooth='auto', drop_original=False):
-        self.cols_to_encode = cols_to_encode
-        self.aggs = aggs
-        self.cv = cv
-        self.smooth = smooth
-        self.drop_original = drop_original
-        self.mappings_ = {}
-        self.global_stats_ = {}
+def preprocess_best_logic(train_df, test_df, org_df):
+    train = train_df.copy()
+    test = test_df.copy()
+    org = org_df.copy()
+    
+    # 기초 컬럼 정의
+    target = cfg.target
+    base_cols = [c for c in test.columns if c != 'id']
+    cat_cols = ['gender', 'course', 'internet_access', 'sleep_quality', 'study_method', 'facility_rating', 'exam_difficulty']
+    num_cols = ['age', 'study_hours', 'class_attendance', 'sleep_hours']
 
-    def fit(self, X, y):
-        temp_df = X.copy()
-        temp_df['target'] = y
-        for agg_func in self.aggs:
-            self.global_stats_[agg_func] = y.agg(agg_func)
-        for col in self.cols_to_encode:
-            self.mappings_[col] = {}
-            for agg_func in self.aggs:
-                mapping = temp_df.groupby(col)['target'].agg(agg_func)
-                self.mappings_[col][agg_func] = mapping
-        return self
-
-    def transform(self, X):
-        X_transformed = X.copy()
-        for col in self.cols_to_encode:
-            for agg_func in self.aggs:
-                new_col_name = f'TE_{col}_{agg_func}'
-                X_transformed[new_col_name] = X[col].map(self.mappings_[col][agg_func])
-                X_transformed[new_col_name].fillna(self.global_stats_[agg_func], inplace=True)
-        if self.drop_original:
-            X_transformed.drop(columns=self.cols_to_encode, inplace=True)
-        return X_transformed
-
-    def fit_transform(self, X, y):
-        self.fit(X, y)
-        encoded_features = pd.DataFrame(index=X.index)
-        kf = KFold(n_splits=self.cv, shuffle=True, random_state=42)
-        for train_idx, val_idx in kf.split(X, y):
-            xt, yt = X.iloc[train_idx], y.iloc[train_idx]
-            xv = X.iloc[val_idx]
-            temp_df_train = xt.copy()
-            temp_df_train['target'] = yt
-            for col in self.cols_to_encode:
-                for agg_func in self.aggs:
-                    new_col_name = f'TE_{col}_{agg_func}'
-                    fold_global_stat = yt.agg(agg_func)
-                    mapping = temp_df_train.groupby(col)['target'].agg(agg_func)
-                    if agg_func == 'mean':
-                        counts = temp_df_train.groupby(col)['target'].count()
-                        m = 1.0 # Smoothing factor
-                        smoothed_mapping = (counts * mapping + m * fold_global_stat) / (counts + m)
-                        encoded_features.loc[xv.index, new_col_name] = xv[col].map(smoothed_mapping).fillna(fold_global_stat)
-                    else:
-                        encoded_features.loc[xv.index, new_col_name] = xv[col].map(mapping).fillna(fold_global_stat)
-        X_transformed = X.copy()
-        for col in encoded_features.columns:
-            X_transformed[col] = encoded_features[col]
-        return X_transformed
-
-def apply_feature_engineering(train, test, org):
-    cat_cols = [col for col in test.columns if test[col].dtype == 'O']
-    num_cols = [col for col in test.columns if test[col].dtype in ['float64', 'int64'] and col != 'id']
-    base_cols = [col for col in test.columns if col != 'id']
-
-    # 이상치 처리
-    for col in num_cols:
-        lower, upper = train[col].quantile(0.01), train[col].quantile(0.99)
-        train[col], test[col] = train[col].clip(lower, upper), test[col].clip(lower, upper)
-
-    # 원본 데이터 매핑
+    # 1. Original Feature Mapping (원본 데이터를 '참고서'로 활용)
     for col in base_cols:
-        mean_map = org.groupby(col)[cfg.target].mean().rename(f"orig_mean_{col}")
+        # Mean mapping
+        mean_map = org.groupby(col)[target].mean().rename(f"orig_mean_{col}")
         train = train.merge(mean_map, on=col, how='left')
         test = test.merge(mean_map, on=col, how='left')
-        train[f"orig_mean_{col}"].fillna(org[cfg.target].mean(), inplace=True)
-        test[f"orig_mean_{col}"].fillna(org[cfg.target].mean(), inplace=True)
+        train[f"orig_mean_{col}"].fillna(org[target].mean(), inplace=True)
+        test[f"orig_mean_{col}"].fillna(org[target].mean(), inplace=True)
+        
+        # Count mapping
+        count_map = org.groupby(col).size().rename(f"orig_count_{col}")
+        train = train.merge(count_map, on=col, how='left')
+        test = test.merge(count_map, on=col, how='left')
+        train[f"orig_count_{col}"].fillna(0, inplace=True)
+        test[f"orig_count_{col}"].fillna(0, inplace=True)
 
-    # Rounding & Digits
+    # 2. Digit Extraction (합성 데이터의 치트키: 소수점 추출)
     for k in range(1, 3):
-        train[f"round{k}"] = train["study_hours"].round(k)
-        test[f"round{k}"] = test["study_hours"].round(k)
-        train[f'digit_{k}'] = ((train['study_hours']*10**k)%10).fillna(-1).astype("int8")
-        test[f"digit_{k}"]  = ((test['study_hours']*10**k)%10).fillna(-1).astype('int8')
+        for df in [train, test]:
+            df[f'digit_{k}'] = ((df['study_hours'] * 10**k) % 10).astype(int)
 
-    # Combinational
-    for col in cat_cols:
-        comb = pd.concat([train[col], test[col]], axis=0)
-        tmp, _ = pd.factorize(comb)
-        train[col], test[col] = tmp[:len(train)], tmp[len(train):]
-
-    # Math Features
+    # 3. Interaction & Math Features
     for df in [train, test]:
-        df['study_att'] = df['study_hours'] * df['class_attendance']
+        df['study_intensity'] = df['study_hours'] * (df['class_attendance'] / 100)
         df['efficiency'] = (df['study_hours'] * df['class_attendance']) / (df['sleep_hours'] + 1)
-        df['meta_0'] = (6*df.study_hours + 0.35*df.class_attendance + 1.5*df.sleep_hours)
+        # 공식 기반 메타 피처
+        df['meta_formula'] = (6*df.study_hours + 0.35*df.class_attendance + 1.5*df.sleep_hours)
 
-    return train, test, cat_cols, num_cols
+    # 4. 범주형 변수 처리
+    for col in cat_cols:
+        le = LabelEncoder()
+        train[col] = le.fit_transform(train[col].astype(str))
+        test[col] = le.transform(test[col].astype(str))
+
+    return train, test
 
 def main():
-    train = pd.read_csv(os.path.join(cfg.data_dir, 'train.csv'))
-    test = pd.read_csv(os.path.join(cfg.data_dir, 'test.csv'))
-    org = pd.read_csv(cfg.org_path)
+    print("--- 8.58 로직 기반 전처리 시작 ---")
+    train_df = pd.read_csv(os.path.join(cfg.data_dir, 'train.csv'))
+    test_df = pd.read_csv(os.path.join(cfg.data_dir, 'test.csv'))
+    org_df = pd.read_csv(cfg.org_path)
 
-    train, test, cat_cols, num_cols = apply_feature_engineering(train, test, org)
+    train, test = preprocess_best_logic(train_df, test_df, org_df)
     
-    features = [c for c in test.columns if c != 'id']
-    X, y = train[features], train[cfg.target]
+    features = [c for c in train.columns if c not in [cfg.target, 'id']]
+    X = train[features]
+    y = train[cfg.target]
     X_test = test[features]
 
-    # 공격적인 하이퍼파라미터 설정 (8.5x 목표)
-    models_info = {
-        'xgb': {'params': {'objective': 'reg:squarederror', 'learning_rate': 0.005, 'max_depth': 8, 'subsample': 0.8, 'colsample_bytree': 0.8, 'reg_lambda': 5.0, 'device': 'cuda', 'enable_categorical': True}},
-        'lgb': {'params': {'objective': 'regression', 'metric': 'rmse', 'learning_rate': 0.005, 'max_depth': 10, 'num_leaves': 127, 'subsample': 0.8, 'colsample_bytree': 0.8, 'verbosity': -1}},
-        'cb':  {'params': {'loss_function': 'RMSE', 'learning_rate': 0.005, 'depth': 10, 'l2_leaf_reg': 7.0, 'random_seed': cfg.seed, 'verbose': False}}
+    # 최적화된 XGBoost 파라미터 (GPU 활용 가능 시 적용)
+    xgb_params = {
+        'n_estimators': 10000,
+        'learning_rate': 0.007,
+        'max_depth': 7,
+        'subsample': 0.8,
+        'colsample_bytree': 0.3,
+        'reg_lambda': 3.0,
+        'objective': 'reg:squarederror',
+        'eval_metric': 'rmse',
+        'early_stopping_rounds': 200,
+        'random_state': cfg.seed,
+        'tree_method': 'hist', # 'gpu_hist' 사용 가능 시 변경 권장
+        'device': 'cuda' if xgb.__version__ >= '2.0.0' else None 
     }
 
-    oofs = {name: np.zeros(len(train)) for name in models_info.keys()}
-    preds = {name: np.zeros(len(test)) for name in models_info.keys()}
-
     kf = KFold(n_splits=cfg.n_splits, shuffle=True, random_state=cfg.seed)
-    stats = ["mean", "std", "count"]
+    oof = np.zeros(len(train))
+    preds = np.zeros(len(test))
 
-    for fold, (train_idx, val_idx) in enumerate(kf.split(X, y)):
-        print(f"\n#### FOLD {fold+1} 시작 ####")
-        x_train, y_train = X.iloc[train_idx], y.iloc[train_idx]
-        x_val, y_val = X.iloc[val_idx], y.iloc[val_idx]
-        x_t = X_test.copy()
+    for fold, (t_idx, v_idx) in enumerate(kf.split(X, y), 1):
+        print(f"Fold {fold} 학습 중...")
+        xt, xv = X.iloc[t_idx], X.iloc[v_idx]
+        yt, yv = y.iloc[t_idx], y.iloc[v_idx]
 
-        te = TargetEncoder(cols_to_encode=num_cols + cat_cols, cv=5, smooth=1.0, aggs=stats)
-        x_train = te.fit_transform(x_train, y_train)
-        x_val = te.transform(x_val)
-        x_t = te.transform(x_t)
+        model = xgb.XGBRegressor(**xgb_params)
+        model.fit(xt, yt, eval_set=[(xv, yv)], verbose=False)
+        
+        oof[v_idx] = model.predict(xv)
+        preds += model.predict(X_test) / cfg.n_splits
 
-        # 1. XGBoost
-        dtrain = xgb.DMatrix(x_train, label=y_train, enable_categorical=True)
-        dval = xgb.DMatrix(x_val, label=y_val, enable_categorical=True)
-        m_xgb = xgb.train(models_info['xgb']['params'], dtrain, num_boost_round=10000, evals=[(dval, 'val')], early_stopping_rounds=200, verbose_eval=1000)
-        oofs['xgb'][val_idx] = m_xgb.predict(dval)
-        preds['xgb'] += m_xgb.predict(xgb.DMatrix(x_t)) / cfg.n_splits
+    score = np.sqrt(mean_squared_error(y, oof))
+    print(f"\n✅ 전체 OOF RMSE: {score:.5f}")
 
-        # 2. LightGBM
-        m_lgb = lgb.LGBMRegressor(**models_info['lgb']['params'], n_estimators=10000)
-        m_lgb.fit(x_train, y_train, eval_set=[(x_val, y_val)], callbacks=[lgb.early_stopping(200), lgb.log_evaluation(1000)])
-        oofs['lgb'][val_idx] = m_lgb.predict(x_val)
-        preds['lgb'] += m_lgb.predict(x_t) / cfg.n_splits
-
-        # 3. CatBoost
-        m_cb = CatBoostRegressor(**models_info['cb']['params'], iterations=10000)
-        m_cb.fit(x_train, y_train, eval_set=(x_val, y_val), early_stopping_rounds=200)
-        oofs['cb'][val_idx] = m_cb.predict(x_val)
-        preds['cb'] += m_cb.predict(x_t) / cfg.n_splits
-
-    for name in models_info.keys():
-        score = np.sqrt(mean_squared_error(y, oofs[name]))
-        print(f"-> {name.upper()} Overall RMSE: {score:.5f}")
-        np.save(f'oof_{name}.npy', oofs[name])
-        np.save(f'preds_{name}.npy', preds[name])
+    # 제출 파일 생성
+    submission = pd.DataFrame({'id': test_df['id'], 'exam_score': preds})
+    submission.to_csv('submission.csv', index=False)
+    print("submission.csv 저장 완료")
 
 if __name__ == "__main__":
     main()
