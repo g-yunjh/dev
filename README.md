@@ -1,0 +1,1 @@
+[![Tech Skills](https://skillicons.dev/icons?i=html,css,js,ts,py,kotlin,ruby,git,linux,ubuntu,npm,react,vue,vite,tailwind,spring,nestjs,nodejs,express,fastapi,rails,postman,gradle,postgres,redis,supabase,sklearn,pytorch,tensorflow,anaconda,kafka,docker,terraform,githubactions,vercel&theme=dark&perline=10)](https://skillicons.dev)
