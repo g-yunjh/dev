@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  worker:
+    build: .
+    container_name: bike_worker
+    restart: always
+    # .env 파일 로드
+    env_file:
+      - .env
+    # 코드 수정 시 재빌드 없이 반영되도록 볼륨 연결
+    volumes:
+      - ./scripts:/app/scripts
