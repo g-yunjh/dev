@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HanjaHanja</title>
+    <link rel="icon" href="icons/favicon.ico" type="image/x-icon">
+    <link href="styles/main.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-YHV5CEXXY2"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-YHV5CEXXY2');
+    </script>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="logo" onclick="window.location.reload();">
+                <span class="material-symbols-outlined" 
+                style = "
+                font-size: 2.5rem; 
+                font-weight: bold;
+                font-weight: bold;
+                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1); 
+                letter-spacing: 1px; 
+                 ">
+                    cycle
+                    </span>
+                <span class="logo-text">Hanja-Hanja</span>
+            </div>
+        </header>
+
+        <section>
+            <form id="hanjaForm">
+                <textarea id="hanjaInput" name="hanja" placeholder="한자를 입력하세요"></textarea>
+                <div class="button-container" style="margin-top:10px;">
+                    <button type="submit">
+                        검색
+                        <span class="material-symbols-outlined">
+                            search
+                            </span>
+                    </button>
+                </div>
+            </form>
+        </section>    
+        
+        <p class = "info-message">
+            <strong>알림:</strong> 이 페이지는 시험적인 기능을 제공하며, 일부 정보가 정확하지 않을 수 있습니다. 중요한 내용은 다른 플랫폼을 통해 교차검증하시기 바랍니다.
+        </p>
+
+        <section id="resultSection" class="hidden">
+            <div>
+                <div class="button-container"  style="margin-bottom:10px;">
+                    <button id="copyButton">
+                        복사
+                        <span class="material-symbols-outlined">
+                            content_copy
+                            </span>
+                    </button>
+                    <button id="downloadButton">
+                        다운로드
+                        <span class="material-symbols-outlined">
+                            download
+                            </span>
+                    </button>
+                </div>
+
+                <table id="resultTable">
+                    <thead>
+                        <tr>
+                            <th style="text-align: center;">한자</th>
+                            <th>뜻</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Dynamic rows will be added here -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

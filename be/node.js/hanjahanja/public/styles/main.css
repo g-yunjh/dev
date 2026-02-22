@@ -1,0 +1,112 @@
+/* 기본 리셋 및 스타일링 */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    color: #333;
+}
+
+.container {
+    width: 90%;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background-color: #f0f0f0; 
+}
+
+.logo-text {
+    font-family: 'Poppins', cursive;
+    font-size: 2.5rem; 
+    color: #6A1B9A; 
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1); 
+    letter-spacing: 1px; 
+}
+
+header {
+    background-color: #ffffff;
+    border-bottom: 2px solid #dcdcdc;
+}
+
+textarea {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #333;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+    resize: vertical; 
+    min-height: 150px; 
+}
+
+.button-container {
+    display: flex;
+    justify-content: flex-end;
+    gap:5px;
+}
+
+button {
+    background-color: #6A1B9A; 
+    color: white; 
+    border: none; 
+    border-radius: 4px; 
+    padding: 10px 20px;
+    font-size: 16px; 
+    cursor: pointer; 
+    transition: background-color 0.3s; 
+}
+
+button:hover {
+    background-color: #4A0072;
+}
+
+section {
+    margin-bottom: 20px;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 10px;
+    border: 1px solid #888;
+    text-align: left;
+}
+
+th {
+    background-color: #f4f4f4;
+}
+
+.hidden {
+    display: none;
+}
+
+.hanja-col {
+    font-size: 1.25rem; 
+    font-weight: bold;
+    text-align: center;
+}
+
+.material-symbols-outlined {
+    vertical-align: middle;
+    font-size: 1.5rem;
+}
+
+.info-message {
+    font-size: 0.875rem;
+    color: #666;
+    text-align: center; 
+}
