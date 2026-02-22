@@ -1,0 +1,13 @@
+# Be sure to restart your server when you modify this file.
+
+# Avoid CORS issues when API is called from the frontend app.
+# Handle Cross-Origin Resource Sharing (CORS) in order to accept cross-origin Ajax requests.
+
+# Read more: https://github.com/cyu/rack-cors
+
+Rails.application.config.middleware.insert_before 0, Rack::Cors do
+  allow do
+    origins '*' # 실제 배포때는 프론트 주소로 바꿔야 함
+    resource '*', headers: :any, methods: :any
+  end
+end
