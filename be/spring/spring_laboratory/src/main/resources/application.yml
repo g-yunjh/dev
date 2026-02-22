@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/settlement?rewriteBatchedInserts=true
+    username: postgres
+    password: '1234'
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create # 처음 실행 시 테이블을 자동으로 생성해줍니다.
+    properties:
+      hibernate:
+        jdbc.batch_size: 1000
+        order_inserts: true
