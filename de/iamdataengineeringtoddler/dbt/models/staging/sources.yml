@@ -1,0 +1,7 @@
+version: 2
+
+sources:
+  - name: raw  # 🌟 dbt에서 사용할 source의 이름 (e.g., 'raw_data_source')
+    schema: raw   # 🌟 실제 DB 스키마 이름
+    tables:
+      - name: raw_patient_events # 🌟 실제 DB 테이블 이름

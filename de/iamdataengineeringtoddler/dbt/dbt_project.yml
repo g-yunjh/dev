@@ -1,0 +1,30 @@
+name: 'de_study_dbt'
+version: '1.0.0'
+config-version: 2
+
+# 사용할 profile을 'de_study_dbt_profile'로 지정합니다.
+profile: 'de_study_dbt_profile'
+
+# 모델이 생성될 위치를 지정합니다.
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+analysis-paths: ["analyses"]
+macro-paths: ["macros"]
+
+target-path: "target"  # dbt compile/run 시 생성되는 파일 경로
+clean-targets:         # dbt clean 시 삭제할 폴더
+  - "target"
+  - "dbt_packages"
+
+# 2단계에서 만들 모델들의 기본 설정을 'mart'로 합니다.
+models:
+  de_study_dbt:
+    # staging 모델들은 'stg' 스키마에,
+    staging:
+      +materialized: view
+      +schema: stg
+    # mart 모델들은 'mart' 스키마에 생성됩니다.
+    marts:
+      +materialized: table
+      +schema: mart
